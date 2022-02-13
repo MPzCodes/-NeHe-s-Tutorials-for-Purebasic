@@ -3,8 +3,9 @@
 ;https://nehe.gamedev.net/tutorial/lines,_antialiasing,_timing,_ortho_view_and_simple_sounds/17003/
 ;Credits: Nico Gruener, Dreglor, traumatic, hagibaba
 ;Author: MPz
-;Date: 07 Oct 2021
-;Note: up-to-date with PB v5.73 (Windows)
+;Date: 13 Feb 2022
+;Note: up-to-date with PB v6.00 (Windows/Linux)
+; Testest with PI4000, now you can create a standalone Program
 
 Global active.b=#True ;Window Active Flag Set To TRUE By Default
 
@@ -53,43 +54,6 @@ steps(3)=5 : steps(4)=10 : steps(5)=20
 Global Dim texture.l(2) ;Font Texture Storage Space
 Global base.l ;Base Display List For The Font
 
-
-Procedure TimerInit() ;Initialize Our Timer (Get It Ready)
-  
-  ;Check To See If A Performance Counter Is Available
-  ;If One Is Available The Timer Frequency Will Be Updated
-  If QueryPerformanceFrequency_(@timer\frequency)=0
-    ;No Performace Counter Available
-    timer\performance_timer=#False ;Set Performance Timer To FALSE
-    timer\mm_timer_start=timeGetTime_() ;Use timeGetTime() To Get Current Time
-    timer\resolution=1.0/1000.0 ;Set Our Timer Resolution To 0.001
-    timer\frequency=1000 ;Set Our Timer Frequency To 1000
-    timer\mm_timer_elapsed=timer\mm_timer_start ;Set The Elapsed Time To The Current Time
-  Else
-    ;Performance Counter Is Available, Use It Instead Of The Multimedia Timer
-    QueryPerformanceCounter_(@timer\performance_timer_start) ;Get The Current Time And Store It In performance_timer_start
-    timer\performance_timer=#True ;Set Performance Timer To TRUE
-    timer\resolution=1.0/timer\frequency ;Calculate The Timer Resolution Using The Timer Frequency
-    timer\performance_timer_elapsed=timer\performance_timer_start ;Set The Elapsed Time To The Current Time
-  EndIf
-  
-EndProcedure
-
-Procedure.f TimerGetTime() ;Get Time In Milliseconds
-  
-  Protected time.q ;time Will Hold A 64 Bit Integer
-  
-  If timer\performance_timer ;Are We Using The Performance Timer?
-    QueryPerformanceCounter_(@time) ;Grab The Current Performance Time
-    ;Return The Current Time Minus The Start Time Multiplied By The Resolution And 1000 (To Get MS)
-    ProcedureReturn ((time-timer\performance_timer_start)*timer\resolution)*1000.0
-  Else
-    ;Return The Current Time Minus The Start Time Multiplied By The Resolution And 1000 (To Get MS)
-    ProcedureReturn ((timeGetTime_()-timer\mm_timer_start)*timer\resolution)*1000.0
-  EndIf
-  
-EndProcedure
-
 Procedure ResetObjects() ;Reset Player And Enemies
   
   player\x=0 ;Reset Player X Position To Far Left Of The Screen
@@ -106,10 +70,10 @@ Procedure ResetObjects() ;Reset Player And Enemies
   
 EndProcedure
 
-Procedure LoadGLTextures(Names1.s,Names2.s)
-  
-  LoadImage(0,"Data/Font.bmp") ; Load texture with name
-  LoadImage(1, "Data/Image.bmp") ; Load texture with name
+Procedure LoadGLTextures()
+    
+  CatchImage(0, ?Font)
+  CatchImage(1, ?Image)
   
   *pointer1 = EncodeImage(0, #PB_ImagePlugin_BMP,0,24 );  
   FreeImage(0)
@@ -130,7 +94,34 @@ Procedure LoadGLTextures(Names1.s,Names2.s)
   
   FreeMemory(*pointer1)
   FreeMemory(*pointer2)
+  
+  DataSection
+    Font:
+      IncludeBinary "Data/Font.bmp"
+    Image:
+      IncludeBinary "Data/Image.bmp"    
+  EndDataSection
 
+  
+EndProcedure
+
+Procedure LoadMySound()
+    
+  CatchSound(0, ?Die)
+  CatchSound(1, ?Complete)
+  CatchSound(2, ?Freeze)  
+  CatchSound(3, ?Hourglass)  
+  
+  DataSection
+    Die:
+      IncludeBinary "Data/Die.wav"
+    Complete:
+      IncludeBinary "Data/Complete.wav"
+    Freeze:
+      IncludeBinary "Data/Freeze.wav"
+    Hourglass:
+      IncludeBinary "Data/Hourglass.wav"
+    EndDataSection
 EndProcedure
 
 Procedure BuildFont() ;Build Our Font Display List
@@ -431,16 +422,18 @@ Procedure CreateGLWindow(title.s,WindowWidth.l,WindowHeight.l,bits.l,fullscreenf
 EndProcedure
 
 
+InitSound()
 
 CreateGLWindow("NeHe's Blending Tutorial (Lesson 21)",640,480,16,0,1)
 
-LoadGLTextures("Data/Font.bmp", "Data/Image.bmp")
+LoadGLTextures()
+
+LoadMySound()
 
 InitGL() 
 
 
 ResetObjects() ;Set Player / Enemy Starting Positions
-TimerInit() ;Initialize The Timer
 
 Repeat
 
@@ -461,12 +454,11 @@ Repeat
     Quit = 1                               ; // This is the end
   EndIf
   
-  start=TimerGetTime() ;Grab Timer Value Before We Draw
-      
-     
-  While TimerGetTime()<start+(steps(adjust)*2.0)
+  StartTime.q = ElapsedMilliseconds()     ; ermittelt den aktuellen Wert
+  
+  While ElapsedMilliseconds() < (StartTime+(steps(adjust)*2.0))
   Wend ;Waste Cycles On Fast Systems
-      
+  
   If KeyboardPushed(#PB_Key_A) And ap=0 ;If 'A' Key Is Pressed And Not Held
      ap=#True ;ap Becomes TRUE
      anti=~anti & 1 ;Toggle Antialiasing
@@ -524,7 +516,8 @@ Repeat
               gameover=#True ;If So, gameover Becomes TRUE
             EndIf
             ResetObjects() ;Reset Player / Enemy Positions
-            PlaySound_("Data/Die.wav",#Null,#SND_SYNC) ;Play The Death Sound
+            ;PlaySound_("Data/Die.wav",#Null,#SND_SYNC) ;Play The Death Sound
+            PlaySound(0)
           EndIf
           
         Next
@@ -574,7 +567,8 @@ Repeat
       
       If filled ;Is The Grid Filled In?
         
-        PlaySound_("Data/Complete.wav",#Null,#SND_SYNC) ;If So, Play The Level Complete Sound
+        ;PlaySound_("Data/Complete.wav",#Null,#SND_SYNC) ;If So, Play The Level Complete Sound
+        PlaySound(1)
         stage+1 ;Increase The Stage
         If stage>3 ;Is The Stage Higher Than 3?
           stage=1 ;If So, Set The Stage To One
@@ -606,7 +600,8 @@ Repeat
       
       ;If The Player Hits The Hourglass While It's Being Displayed On The Screen
       If player\fx=hourglass\x*60 And player\fy=hourglass\y*40 And hourglass\fx=1
-        PlaySound_("Data/Freeze.wav",#Null,#SND_ASYNC | #SND_LOOP) ;Play Freeze Enemy Sound
+        ;PlaySound_("Data/Freeze.wav",#Null,#SND_ASYNC | #SND_LOOP) ;Play Freeze Enemy Sound
+        PlaySound(2, #PB_Sound_Loop )
         hourglass\fx=2 ;Set The hourglass fx Variable To Two
         hourglass\fy=0 ;Set The hourglass fy Variable To Zero
       EndIf
@@ -626,7 +621,8 @@ Repeat
       ;Is The hourglass fx Variable Equal To 0 (invisible) And The fy
       ;Variable Greater Than 6000 Divided By The Current Level?
       If hourglass\fx=0 And hourglass\fy>6000/level
-        PlaySound_("Data/Hourglass.wav",#Null,#SND_ASYNC) ;If So, Play The Hourglass Appears Sound
+        ;PlaySound_("Data/Hourglass.wav",#Null,#SND_ASYNC) ;If So, Play The Hourglass Appears Sound
+        PlaySound(3)
         hourglass\x=Random(9)+1 ;Give The Hourglass A Random X Value
         hourglass\y=Random(10) ;Give The Hourglass A Random Y Value
         hourglass\fx=1 ;Set hourglass fx Variable To One (Hourglass Stage)
@@ -643,7 +639,8 @@ Repeat
       ;Is The hourglass fx Variable Equal To 2 (activated) And The fy
       ;Variable Greater Than 500 Plus 500 Times The Current Level?
       If hourglass\fx=2 And hourglass\fy>500+(500*level)
-        PlaySound_(#Null,#Null,0) ;If So, Kill The Freeze Sound
+        ;PlaySound_(#Null,#Null,0) ;If So, Kill The Freeze Sound
+        StopSound(2)
         hourglass\fx=0 ;Set hourglass fx Variable To Zero
         hourglass\fy=0 ;Set hourglass fy Variable To Zero
       EndIf
@@ -664,8 +661,7 @@ Repeat
 Until Quit = 1
 
 ; IDE Options = PureBasic 5.73 LTS (Windows - x64)
-; CursorPosition = 434
-; FirstLine = 419
+; CursorPosition = 7
 ; Folding = --
 ; EnableAsm
 ; EnableXP
