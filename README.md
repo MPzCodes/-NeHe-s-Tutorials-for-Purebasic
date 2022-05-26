@@ -2,6 +2,8 @@
 
 OpenGL NeHe's Tutorial for Purebasic Lessons 1-30, 36, 38 and 46
 
+the missing lessons are updated from time to time
+
 http://nehe.gamedev.net
 
 here you find NeHe's Tutorial translated to Purebasic.
