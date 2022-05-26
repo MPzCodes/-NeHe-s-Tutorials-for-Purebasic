@@ -1,6 +1,6 @@
 ;NeHe & MainRoach's FSAA Tutorial (Lesson 46) 
 ;http://nehe.gamedev.net 
-;https://nehe.gamedev.net/tutorial/radial_blur__rendering_to_a_texture/18004/
+;https://nehe.gamedev.net/tutorial/fullscreen_antialiasing/16008/
 ;Credits:  Nico Gruener, Dreglor, traumatic, hagibaba
 ;Author: MPz
 ;Date:   26.5.2022
@@ -166,6 +166,7 @@ Until Quit = 1
 
 
 ; IDE Options = PureBasic 6.00 Beta 8 (Windows - x64)
+; CursorPosition = 2
 ; Folding = -
 ; EnableAsm
 ; EnableXP
